@@ -11,7 +11,7 @@ from jellyrip.disc import close_tray, open_tray, wait_for_disc
 from jellyrip.jellyfin import maybe_eject, trigger_jellyfin_scan
 from jellyrip.prompt import clean_label, prompt_title_year, select_titles
 from jellyrip.rip import get_disc_titles, rip_titles
-from jellyrip.transcode import detect_fps, transcode_with_handbrake
+# from jellyrip.transcode import detect_fps, transcode_with_handbrake
 
 
 def main():
@@ -41,11 +41,13 @@ def main():
         print("Cancelled.")
         sys.exit(0)
 
-    print("\nTranscode with HandBrakeCLI, or copy the MakeMKV file as-is?")
-    print("  [1] Copy MKV directly  (fast, lossless, larger file ~4–8 GB)")
-    print("  [2] Transcode x264     (slow, smaller file ~1–2 GB)")
-    transcode_choice = input("Choice [1]: ").strip()
-    do_transcode = transcode_choice == "2"
+    # Transcode option temporarily disabled
+    # print("\nTranscode with HandBrakeCLI, or copy the MakeMKV file as-is?")
+    # print("  [1] Copy MKV directly  (fast, lossless, larger file ~4–8 GB)")
+    # print("  [2] Transcode x264     (slow, smaller file ~1–2 GB)")
+    # transcode_choice = input("Choice [1]: ").strip()
+    # do_transcode = transcode_choice == "2"
+    do_transcode = False
 
     if movie_dir.exists():
         print(f'\nWARNING: Output directory already exists: {movie_dir}')
@@ -75,14 +77,14 @@ def main():
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            if do_transcode:
-                fps = detect_fps(source_mkv)
-                label = "" if tid == main_id else output_path.stem
-                transcode_with_handbrake(source_mkv, output_path, fps, label=label)
-            else:
-                print(f"\nCopying{' extras/' if tid != main_id else ''} → {output_path.name}...")
-                shutil.copy2(source_mkv, output_path)
-                print(f"  Saved: {output_path.name}  ({output_path.stat().st_size / 1e9:.1f} GB)")
+            # if do_transcode:
+            #     fps = detect_fps(source_mkv)
+            #     label = "" if tid == main_id else output_path.stem
+            #     transcode_with_handbrake(source_mkv, output_path, fps, label=label)
+            # else:
+            print(f"\nCopying{' extras/' if tid != main_id else ''} → {output_path.name}...")
+            shutil.copy2(source_mkv, output_path)
+            print(f"  Saved: {output_path.name}  ({output_path.stat().st_size / 1e9:.1f} GB)")
 
         shutil.rmtree(state._temp_dir, ignore_errors=True)
         state._temp_dir = None

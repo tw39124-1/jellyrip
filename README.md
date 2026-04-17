@@ -1,6 +1,6 @@
 # dvd-ripper
 
-A command-line tool for ripping DVDs and transcoding them into a [Jellyfin](https://jellyfin.org)-compatible media library. It uses MakeMKV to extract titles and optionally HandBrakeCLI to transcode to H.264/MKV. Everything is interactive — insert a disc, pick your titles, choose copy or transcode, and walk away.
+A command-line tool for ripping DVDs into a [Jellyfin](https://jellyfin.org)-compatible media library. It uses MakeMKV to extract titles and copies them as MKV files. Everything is interactive — insert a disc, pick your titles, and walk away.
 
 ---
 
@@ -9,7 +9,7 @@ A command-line tool for ripping DVDs and transcoding them into a [Jellyfin](http
 - Detects disc label automatically and prompts for title/year confirmation
 - Scans all titles via MakeMKV and presents an interactive selection table
 - Auto-identifies the main feature (longest title) vs. extras/bonus content
-- Two output modes: **direct MKV copy** (fast, lossless) or **H.264 transcode** (smaller, slower)
+- Output: **direct MKV copy** (fast, lossless)
 - Live progress display with spinner, percentage, and data throughput
 - Saves extras into an `extras/` subdirectory alongside the main feature
 - Triggers a Jellyfin library scan automatically after ripping
@@ -26,7 +26,6 @@ All four must be on your `PATH`:
 | Tool | Purpose | Install |
 |---|---|---|
 | `makemkvcon` | DVD decryption and title extraction | See [MakeMKV forum](https://www.makemkv.com/forum/viewtopic.php?t=224) |
-| `HandBrakeCLI` | H.264 transcoding | `sudo apt install handbrake-cli` |
 | `ffprobe` | Framerate detection | `sudo apt install ffmpeg` |
 | `eject` | Tray control | Pre-installed on most Linux distros |
 | `blkid` | Disc label detection | Pre-installed on most Linux distros |
@@ -38,7 +37,7 @@ Python 3.6+ is required. No third-party packages are needed.
 ### Hardware
 
 - A DVD drive accessible at `/dev/sr0` (configurable — see below)
-- Sufficient disk space: ~8 GB per disc for the MKV copy, ~2 GB per disc after transcoding
+- Sufficient disk space: ~8 GB per disc
 
 ---
 
@@ -57,7 +56,7 @@ On Ubuntu/Debian:
 
 ```bash
 sudo apt update
-sudo apt install ffmpeg handbrake-cli eject util-linux
+sudo apt install ffmpeg eject util-linux
 ```
 
 For `makemkvcon`, follow the official build instructions on the [MakeMKV forum](https://www.makemkv.com/forum/viewtopic.php?t=224) — it is not available in standard package repositories.
@@ -66,7 +65,6 @@ After installing, verify everything is on your PATH:
 
 ```bash
 makemkvcon --version
-HandBrakeCLI --version
 ffprobe -version
 eject --version
 blkid --version
@@ -127,8 +125,7 @@ The script walks you through the full workflow interactively:
 3. **Title scan** — MakeMKV scans the disc and displays a table of all titles with duration, chapter count, and size
 4. **Select titles** — enter numbers, ranges (`1-3`), or `all`; the main feature is highlighted automatically
 5. **Confirm destination** — shows the output path before anything is written
-6. **Choose mode** — copy MKV directly or transcode to H.264 (x264)
-7. **Rip and process** — live progress shown throughout
+6. **Rip and process** — live progress shown throughout
 8. **Done** — Jellyfin scan triggered (if configured); option to eject disc
 
 To cancel at any point, press `Ctrl+C`. The script will clean up temporary files and eject the disc.
@@ -145,20 +142,6 @@ To cancel at any point, press `Ctrl+C`. The script will clean up temporary files
         ├── Extra - 0h 05m 30s.mkv
         └── Behind the Scenes.mkv
 ```
-
----
-
-## Transcode settings
-
-When you choose the H.264 transcode mode, HandBrakeCLI encodes with these settings:
-
-- Codec: x264 | Quality: RF 20 | Preset: `veryslow`
-- Profile: `high`, Level: `3.1`, Tune: `film`
-- Deinterlace: `eedi2bob` (handles interlaced NTSC/PAL sources)
-- Audio: all tracks, English preferred, AC3 passthrough or AAC fallback
-- Subtitles: all English subtitle tracks included
-
-Expect transcoding to take **2–4 hours per feature** on a typical CPU.
 
 ---
 
