@@ -25,6 +25,5 @@ def trigger_jellyfin_scan() -> None:
         print(f"  Could not reach Jellyfin: {exc}")
 
 
-def maybe_eject():
-    if input("\nEject disc? [Y/n]: ").strip().lower() != "n":
-        subprocess.run(["eject", DEVICE])
+def eject():
+    subprocess.run(["eject", DEVICE])

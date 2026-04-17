@@ -10,7 +10,7 @@ if _env_file.exists():
             os.environ.setdefault(_k.strip(), _v.strip())
 
 DEVICE = "/dev/sr0"
-OUTPUT_ROOT = Path("/srv/media/movies")
+OUTPUT_ROOT = Path("/mnt/raid1/media/movies")
 JELLYFIN_URL = "http://localhost:8096"
 DISC_READY_TIMEOUT = 60
 FORBIDDEN_CHARS = r'[<>:"/\\|?*]'
