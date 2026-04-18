@@ -25,5 +25,5 @@ def trigger_jellyfin_scan() -> None:
         print(f"  Could not reach Jellyfin: {exc}")
 
 
-def eject():
-    subprocess.run(["eject", DEVICE])
+def eject(device: str = DEVICE):
+    subprocess.run(["eject", device])

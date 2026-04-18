@@ -1,3 +1,4 @@
+import argparse
 import re
 import shutil
 import tempfile
@@ -5,7 +6,7 @@ from pathlib import Path
 
 from jellyrip import state
 from jellyrip.colors import bold, cyan, dim, green, red, yellow
-from jellyrip.config import DISC_READY_TIMEOUT, FORBIDDEN_CHARS, OUTPUT_ROOT
+from jellyrip.config import DEVICE, DISC_READY_TIMEOUT, FORBIDDEN_CHARS, OUTPUT_ROOT
 from jellyrip.deps import check_dependencies
 from jellyrip.disc import close_tray, open_tray, wait_for_disc, wait_for_tray_close
 from jellyrip.jellyfin import eject, trigger_jellyfin_scan
@@ -15,18 +16,25 @@ from jellyrip.rip import get_disc_titles, rip_titles
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", default=DEVICE, help="DVD drive device (default: %(default)s)")
+    args = parser.parse_args()
+    device = args.device
+    disc_ref = f"dev:{device}"
+    state._device = device
+
     check_dependencies()
 
     while True:
-        open_tray()
+        open_tray(device)
 
-        result = wait_for_tray_close()
+        result = wait_for_tray_close(device)
         if result == "quit":
             break
         if result == "enter":
-            close_tray()
+            close_tray(device)
 
-        raw_label = wait_for_disc()
+        raw_label = wait_for_disc(device)
         if not raw_label:
             print(f"\n  {red('ERROR:')} Disc not readable after {DISC_READY_TIMEOUT}s. Check the disc and try again.")
             continue
@@ -35,7 +43,7 @@ def main():
         movie_name = f"{title} ({year})"
         movie_dir = OUTPUT_ROOT / movie_name
 
-        titles_info = get_disc_titles()
+        titles_info = get_disc_titles(disc_ref)
         main_id = max(titles_info, key=lambda t: t["duration_secs"])["id"]
         selected_ids = [main_id]
         main_title = next(t for t in titles_info if t["id"] == main_id)
@@ -59,7 +67,7 @@ def main():
 
         try:
             id_to_info = {t["id"]: t for t in titles_info}
-            ripped = rip_titles(selected_ids, titles_info, state._temp_dir)
+            ripped = rip_titles(selected_ids, titles_info, state._temp_dir, disc_ref)
 
             for tid in selected_ids:
                 source_mkv = ripped[tid]
@@ -94,7 +102,7 @@ def main():
             print(f"  {dim(str(movie_dir) + '/')}")
             print(f"\n  {dim('Triggering Jellyfin scan…')}")
             trigger_jellyfin_scan()
-            eject()
+            eject(device)
 
         except SystemExit:
             raise

@@ -15,11 +15,11 @@ def _dur_to_secs(dur: str) -> int:
         return 0
 
 
-def get_disc_titles() -> list[dict]:
+def get_disc_titles(disc_ref: str = "disc:0") -> list[dict]:
     from jellyrip.spinner import Spinner
     with Spinner("Scanning disc..."):
         result = subprocess.run(
-            ["makemkvcon", "-r", "info", "disc:0"],
+            ["makemkvcon", "-r", "info", disc_ref],
             capture_output=True, text=True,
         )
 
@@ -88,10 +88,10 @@ def _fmt_duration(secs: int) -> str:
     return f"{m:02d}:{s:02d}"
 
 
-def _rip_one_title(title_id: int, tmpdir: Path, label: str, expected_bytes: int = 0):
-    """Rip a single title from disc:0 into tmpdir, showing live progress."""
+def _rip_one_title(title_id: int, tmpdir: Path, label: str, expected_bytes: int = 0, disc_ref: str = "disc:0"):
+    """Rip a single title into tmpdir, showing live progress."""
     proc = subprocess.Popen(
-        ["makemkvcon", "-r", "mkv", "disc:0", str(title_id), str(tmpdir)],
+        ["makemkvcon", "-r", "mkv", disc_ref, str(title_id), str(tmpdir)],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         text=True,
@@ -178,7 +178,7 @@ def _rip_one_title(title_id: int, tmpdir: Path, label: str, expected_bytes: int 
     state._active_proc = None
 
 
-def rip_titles(selected_ids: list[int], titles_info: list[dict], tmpdir: Path) -> dict[int, Path]:
+def rip_titles(selected_ids: list[int], titles_info: list[dict], tmpdir: Path, disc_ref: str = "disc:0") -> dict[int, Path]:
     """
     Rip each selected title into tmpdir.
     Returns {title_id: mkv_path}.
@@ -194,7 +194,7 @@ def rip_titles(selected_ids: list[int], titles_info: list[dict], tmpdir: Path) -
         print(f"\n  {dim(f'[{idx + 1}/{n_total}]')} Ripping {bold(label)}...")
 
         before = set(tmpdir.glob("*.mkv"))
-        _rip_one_title(tid, tmpdir, label, expected_bytes=info.get("size_bytes", 0))
+        _rip_one_title(tid, tmpdir, label, expected_bytes=info.get("size_bytes", 0), disc_ref=disc_ref)
         after = set(tmpdir.glob("*.mkv"))
 
         new_files = after - before

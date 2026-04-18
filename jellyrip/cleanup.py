@@ -2,7 +2,6 @@ import shutil
 import subprocess
 
 from jellyrip import state
-from jellyrip.config import DEVICE
 
 
 def _kill_active_proc():
@@ -23,5 +22,5 @@ def do_cleanup():
         shutil.rmtree(state._temp_dir, ignore_errors=True)
         state._temp_dir = None
     print("  Ejecting disc...", flush=True)
-    subprocess.run(["eject", DEVICE], capture_output=True)
+    subprocess.run(["eject", state._device], capture_output=True)
     print("  Done.", flush=True)

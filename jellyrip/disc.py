@@ -12,18 +12,18 @@ CDROM_DRIVE_STATUS = 0x5326
 CDS_DISC_OK = 4
 
 
-def open_tray():
-    print(f"Opening disc tray ({DEVICE})...")
-    if subprocess.run(["eject", DEVICE]).returncode != 0:
+def open_tray(device: str = DEVICE):
+    print(f"Opening disc tray ({device})...")
+    if subprocess.run(["eject", device]).returncode != 0:
         print("WARNING: Could not open tray (may already be open).")
 
 
-def close_tray():
+def close_tray(device: str = DEVICE):
     print("Closing tray...")
-    subprocess.run(["eject", "-t", DEVICE])
+    subprocess.run(["eject", "-t", device])
 
 
-def wait_for_tray_close() -> str:
+def wait_for_tray_close(device: str = DEVICE) -> str:
     """Wait for the user to close the tray.
 
     Returns 'quit' if user typed q, 'enter' if Enter was pressed (caller must
@@ -35,7 +35,7 @@ def wait_for_tray_close() -> str:
         consecutive = 0
         while not closed.is_set():
             try:
-                fd = os.open(DEVICE, os.O_RDONLY | os.O_NONBLOCK)
+                fd = os.open(device, os.O_RDONLY | os.O_NONBLOCK)
                 status = fcntl.ioctl(fd, CDROM_DRIVE_STATUS, 0)
                 os.close(fd)
                 if status == CDS_DISC_OK:
@@ -63,13 +63,13 @@ def wait_for_tray_close() -> str:
     return result
 
 
-def wait_for_disc() -> str | None:
+def wait_for_disc(device: str = DEVICE) -> str | None:
     from jellyrip.spinner import Spinner
     deadline = time.time() + DISC_READY_TIMEOUT
     with Spinner("Waiting for disc..."):
         while time.time() < deadline:
             result = subprocess.run(
-                ["blkid", DEVICE, "-o", "value", "-s", "LABEL"],
+                ["blkid", device, "-o", "value", "-s", "LABEL"],
                 capture_output=True, text=True,
             )
             label = result.stdout.strip()
