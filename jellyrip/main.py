@@ -12,7 +12,6 @@ from jellyrip.disc import close_tray, open_tray, wait_for_disc, wait_for_tray_cl
 from jellyrip.jellyfin import eject, trigger_jellyfin_scan
 from jellyrip.prompt import clean_label, prompt_title_year
 from jellyrip.rip import get_disc_titles, rip_titles
-# from jellyrip.transcode import detect_fps, transcode_with_handbrake
 
 
 def main():
@@ -50,14 +49,6 @@ def main():
         main_detail = f'({main_title["duration"]}, {main_title["size"]})'
         print(f'\n  {dim("Main feature:")} title {main_id + 1}  {dim(main_detail)}')
 
-        # Transcode option temporarily disabled
-        # print("\nTranscode with HandBrakeCLI, or copy the MakeMKV file as-is?")
-        # print("  [1] Copy MKV directly  (fast, lossless, larger file ~4–8 GB)")
-        # print("  [2] Transcode x264     (slow, smaller file ~1–2 GB)")
-        # transcode_choice = input("Choice [1]: ").strip()
-        # do_transcode = transcode_choice == "2"
-        do_transcode = False
-
         if movie_dir.exists():
             print(f'\n  {yellow("WARNING:")} Output directory already exists: {dim(str(movie_dir))}')
             if input("  Continue anyway (may overwrite files)? [y/N]: ").strip().lower() != "y":
@@ -86,11 +77,6 @@ def main():
 
                 output_path.parent.mkdir(parents=True, exist_ok=True)
 
-                # if do_transcode:
-                #     fps = detect_fps(source_mkv)
-                #     label = "" if tid == main_id else output_path.stem
-                #     transcode_with_handbrake(source_mkv, output_path, fps, label=label)
-                # else:
                 print(f"\n  Copying → {cyan(output_path.name)}...")
                 shutil.copy2(source_mkv, output_path)
                 print(f"  {green('✓')} {output_path.name}  {dim(f'({output_path.stat().st_size / 1e9:.1f} GB)')}")

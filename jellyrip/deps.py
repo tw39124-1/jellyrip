@@ -4,7 +4,7 @@ import sys
 
 def check_dependencies():
     from jellyrip.colors import dim, red
-    missing = [t for t in ("eject", "blkid", "makemkvcon", "ffprobe")  # "HandBrakeCLI" temporarily removed
+    missing = [t for t in ("eject", "blkid", "makemkvcon")
                if not shutil.which(t)]
     if missing:
         print(f"  {red('ERROR:')} Missing required tools: {', '.join(missing)}")
