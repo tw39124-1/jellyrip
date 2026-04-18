@@ -1,4 +1,4 @@
-# dvd-ripper
+# jellyrip
 
 A command-line tool for ripping DVDs into a [Jellyfin](https://jellyfin.org)-compatible media library. It uses MakeMKV to extract titles and copies them as MKV files. Everything is interactive — insert a disc, pick your titles, and walk away.
 
@@ -21,22 +21,21 @@ A command-line tool for ripping DVDs into a [Jellyfin](https://jellyfin.org)-com
 
 ### System tools
 
-All four must be on your `PATH`:
+All three must be on your `PATH`:
 
 | Tool | Purpose | Install |
 |---|---|---|
 | `makemkvcon` | DVD decryption and title extraction | See [MakeMKV forum](https://www.makemkv.com/forum/viewtopic.php?t=224) |
-| `ffprobe` | Framerate detection | `sudo apt install ffmpeg` |
 | `eject` | Tray control | Pre-installed on most Linux distros |
 | `blkid` | Disc label detection | Pre-installed on most Linux distros |
 
 ### Python
 
-Python 3.6+ is required. No third-party packages are needed.
+Python 3.10+ is required. No third-party packages are needed.
 
 ### Hardware
 
-- A DVD drive accessible at `/dev/sr0` (configurable — see below)
+- A DVD drive accessible at `/dev/sr0` (overridable with `--device`)
 - Sufficient disk space: ~8 GB per disc
 
 ---
@@ -47,7 +46,7 @@ Python 3.6+ is required. No third-party packages are needed.
 
 ```bash
 git clone <repo-url>
-cd dvd-ripper
+cd jellyrip
 ```
 
 ### 2. Install system dependencies
@@ -56,38 +55,31 @@ On Ubuntu/Debian:
 
 ```bash
 sudo apt update
-sudo apt install ffmpeg eject util-linux
+sudo apt install eject util-linux
 ```
 
 For `makemkvcon`, follow the official build instructions on the [MakeMKV forum](https://www.makemkv.com/forum/viewtopic.php?t=224) — it is not available in standard package repositories.
 
-After installing, verify everything is on your PATH:
+Verify everything is on your PATH:
 
 ```bash
 makemkvcon --version
-ffprobe -version
 eject --version
 blkid --version
 ```
 
 ### 3. Configure the output directory
 
-By default, ripped media is saved to `/srv/media/movies`. Create it (or update the path — see [Configuration](#configuration)):
+By default, ripped media is saved to `/mnt/raid1/media/movies`. Create it (or update `jellyrip/config.py` — see [Configuration](#configuration)):
 
 ```bash
-sudo mkdir -p /srv/media/movies
-sudo chown $USER:$USER /srv/media/movies
+sudo mkdir -p /mnt/raid1/media/movies
+sudo chown $USER:$USER /mnt/raid1/media/movies
 ```
 
 ### 4. Set up Jellyfin integration (optional)
 
-If you want the script to trigger a Jellyfin library scan after each rip, create a `.env` file in the project root:
-
-```bash
-cp .env.example .env   # or create it manually
-```
-
-`.env` contents:
+Create a `.env` file in the project root:
 
 ```
 JELLYFIN_API_KEY=your_api_key_here
@@ -101,13 +93,13 @@ If `JELLYFIN_API_KEY` is not set, the Jellyfin scan step is silently skipped.
 
 ## Configuration
 
-Edit the constants at the top of `rip.py` to match your setup:
+Edit the constants in [jellyrip/config.py](jellyrip/config.py):
 
 ```python
-DEVICE = "/dev/sr0"                    # DVD drive device path
-OUTPUT_ROOT = Path("/srv/media/movies") # Where to save ripped media
-JELLYFIN_URL = "http://localhost:8096"  # Jellyfin server address
-DISC_READY_TIMEOUT = 60                 # Seconds to wait for disc to become readable
+DEVICE = "/dev/sr0"                          # DVD drive device path (default, overridable via --device)
+OUTPUT_ROOT = Path("/mnt/raid1/media/movies") # Where to save ripped media
+JELLYFIN_URL = "http://localhost:8096"        # Jellyfin server address
+DISC_READY_TIMEOUT = 60                       # Seconds to wait for disc to become readable
 ```
 
 ---
@@ -115,7 +107,13 @@ DISC_READY_TIMEOUT = 60                 # Seconds to wait for disc to become rea
 ## Usage
 
 ```bash
-python3 rip.py
+python -m jellyrip
+```
+
+To use a specific DVD drive:
+
+```bash
+python -m jellyrip --device /dev/sr1
 ```
 
 The script walks you through the full workflow interactively:
@@ -126,7 +124,7 @@ The script walks you through the full workflow interactively:
 4. **Select titles** — enter numbers, ranges (`1-3`), or `all`; the main feature is highlighted automatically
 5. **Confirm destination** — shows the output path before anything is written
 6. **Rip and process** — live progress shown throughout
-8. **Done** — Jellyfin scan triggered (if configured); option to eject disc
+7. **Done** — Jellyfin scan triggered (if configured); disc is ejected automatically
 
 To cancel at any point, press `Ctrl+C`. The script will clean up temporary files and eject the disc.
 
@@ -135,7 +133,7 @@ To cancel at any point, press `Ctrl+C`. The script will clean up temporary files
 ## Output structure
 
 ```
-/srv/media/movies/
+/mnt/raid1/media/movies/
 └── Movie Title (2008)/
     ├── Movie Title (2008).mkv    ← main feature
     └── extras/
@@ -149,4 +147,4 @@ To cancel at any point, press `Ctrl+C`. The script will clean up temporary files
 
 - `.env` contains your Jellyfin API key — do not commit it to a public repository.
 - MakeMKV requires a valid (paid or beta) license key to rip commercial DVDs. The beta key is renewed periodically on the MakeMKV forum.
-- The script is Linux-only (`/dev/sr0`, `eject`, `blkid`).
+- Linux-only (`eject`, `blkid`, `/dev/sr*`).
