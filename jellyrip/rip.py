@@ -106,17 +106,10 @@ def _fmt_duration(secs: int) -> str:
 
 def _rip_one_title(title_id: int, tmpdir: Path, label: str, expected_bytes: int = 0, disc_ref: str = "disc:0"):
     """Rip a single title into tmpdir, showing live progress."""
-    #proc = subprocess.Popen(
-    #    ["makemkvcon", "-r", "mkv", disc_ref, str(title_id), str(tmpdir)],
-    #    stdout=subprocess.PIPE,
-    #    stderr=subprocess.DEVNULL,
-    #    text=True,
-    #    bufsize=1,
-    #)
     proc = subprocess.Popen(
-        ["HandbrakeCLI", "-i", disc_ref, "-t", title_id, "-o", str(tmpdir), "-f", "av_mkv", "--all-audio", "--all-subtitles"],
+        ["HandBrakeCLI", "-i", disc_ref, "-t", str(title_id), "-o", f"{str(tmpdir)}/title_{title_id}.mkv", "-f", "av_mkv", "--all-audio", "--all-subtitles"],
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
     )
@@ -195,7 +188,9 @@ def _rip_one_title(title_id: int, tmpdir: Path, label: str, expected_bytes: int 
     print()
 
     if proc.wait() != 0:
-        print(f"\nERROR: Handbrake failed ripping title {title_id + 1}.")
+        print(f"\nERROR: Handbrake failed ripping title {title_id}.")
+        print(proc.stdout)
+        print(proc.stderr)
         sys.exit(1)
 
     state._active_proc = None
