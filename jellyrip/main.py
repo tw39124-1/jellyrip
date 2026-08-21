@@ -19,7 +19,7 @@ def main():
     parser.add_argument("--device", default=DEVICE, help="DVD drive device (default: %(default)s)")
     args = parser.parse_args()
     device = args.device
-    disc_ref = f"dev:{device}"
+    disc_ref = f"{device}"
     state._device = device
 
     check_dependencies()

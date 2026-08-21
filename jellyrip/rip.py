@@ -18,26 +18,42 @@ def _dur_to_secs(dur: str) -> int:
 def get_disc_titles(disc_ref: str = "disc:0") -> list[dict]:
     from jellyrip.spinner import Spinner
     with Spinner("Scanning disc..."):
+        #result = subprocess.run(
+        #    ["makemkvcon", "-r", "info", disc_ref],
+        #    capture_output=True, text=True,
+        #)
         result = subprocess.run(
-            ["makemkvcon", "-r", "info", disc_ref],
-            capture_output=True, text=True,
+            ["lsdvd", "-Oj", "-x", "-q"],
+            capture_output=True, text=True
         )
+
+    result_json = json.loads(result.stdout)
 
     # TINFO:id,code,flags,"value"
     # Useful codes: 8=chapters, 9=duration, 10=size (human), 11=size (bytes), 27=filename
     raw: dict[int, dict] = {}
-    for line in result.stdout.splitlines():
-        if not line.startswith("TINFO:"):
-            continue
-        parts = line[6:].split(",", 3)
-        if len(parts) < 4:
-            continue
-        try:
-            tid, code = int(parts[0]), int(parts[1])
-            value = parts[3].strip('"')
-        except ValueError:
-            continue
-        raw.setdefault(tid, {})[code] = value
+    # { id: {  } }
+
+    for t in result_json["track"]:
+        tid = t["ix"]
+        raw[tid] = {
+            8: len(t["chapter"]),
+            9: int(t["length"])
+        }
+
+    #for line in result.stdout.splitlines():
+    #    #if not line.startswith("TINFO:"):
+    #    if not line.startswith("Title:"):
+    #        continue
+    #    parts = line[6:].split(",", 3)
+    #    if len(parts) < 4:
+    #        continue
+    #    try:
+    #        tid, code = int(parts[0]), int(parts[1])
+    #        value = parts[3].strip('"')
+    #    except ValueError:
+    #        continue
+    #    raw.setdefault(tid, {})[code] = value
 
     titles = []
     for tid in sorted(raw):
@@ -90,8 +106,15 @@ def _fmt_duration(secs: int) -> str:
 
 def _rip_one_title(title_id: int, tmpdir: Path, label: str, expected_bytes: int = 0, disc_ref: str = "disc:0"):
     """Rip a single title into tmpdir, showing live progress."""
+    #proc = subprocess.Popen(
+    #    ["makemkvcon", "-r", "mkv", disc_ref, str(title_id), str(tmpdir)],
+    #    stdout=subprocess.PIPE,
+    #    stderr=subprocess.DEVNULL,
+    #    text=True,
+    #    bufsize=1,
+    #)
     proc = subprocess.Popen(
-        ["makemkvcon", "-r", "mkv", disc_ref, str(title_id), str(tmpdir)],
+        ["HandbrakeCLI", "-i", disc_ref, "-t", title_id, "-o", str(tmpdir), "-f", "av_mkv", "--all-audio", "--all-subtitles"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         text=True,
@@ -172,7 +195,7 @@ def _rip_one_title(title_id: int, tmpdir: Path, label: str, expected_bytes: int 
     print()
 
     if proc.wait() != 0:
-        print(f"\nERROR: MakeMKV failed ripping title {title_id + 1}.")
+        print(f"\nERROR: Handbrake failed ripping title {title_id + 1}.")
         sys.exit(1)
 
     state._active_proc = None
