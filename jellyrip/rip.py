@@ -35,42 +35,28 @@ def get_disc_titles(disc_ref: str = "disc:0") -> list[dict]:
     # { id: {  } }
 
     for t in result_json["track"]:
-        tid = t["ix"]
+        tid = int(t["ix"])
         raw[tid] = {
-            8: len(t["chapter"]),
-            9: int(t["length"])
+            "chapters": len(t["chapter"]),
+            "duration_secs": int(t["length"])
         }
-
-    #for line in result.stdout.splitlines():
-    #    #if not line.startswith("TINFO:"):
-    #    if not line.startswith("Title:"):
-    #        continue
-    #    parts = line[6:].split(",", 3)
-    #    if len(parts) < 4:
-    #        continue
-    #    try:
-    #        tid, code = int(parts[0]), int(parts[1])
-    #        value = parts[3].strip('"')
-    #    except ValueError:
-    #        continue
-    #    raw.setdefault(tid, {})[code] = value
 
     titles = []
     for tid in sorted(raw):
         info = raw[tid]
-        duration = info.get(9, "0:00:00")
+        duration_secs = info.get("duration_secs", 0)
         try:
             size_bytes = int(info.get(11, 0))
         except ValueError:
             size_bytes = 0
         titles.append({
             "id": tid,
-            "duration": duration,
-            "duration_secs": _dur_to_secs(duration),
-            "chapters": info.get(8, "?"),
+            "duration": duration_secs,
+            "duration_secs": duration_secs,
+            "chapters": info["chapters"],
             "size": info.get(10, "?"),
             "size_bytes": size_bytes,
-            "filename": info.get(27, f"title_t{tid:02d}.mkv"),
+            "filename": f"title_t{tid:02d}.mkv",
         })
 
     return titles
@@ -106,91 +92,19 @@ def _fmt_duration(secs: int) -> str:
 
 def _rip_one_title(title_id: int, tmpdir: Path, label: str, expected_bytes: int = 0, disc_ref: str = "disc:0"):
     """Rip a single title into tmpdir, showing live progress."""
+
+    args = ["HandBrakeCLI", "-i", disc_ref, "--main-feature", "-o", f"{str(tmpdir)}/title_{title_id}.mkv", "-f", "av_mkv", "--all-audio", "--all-subtitles"]
+
+    print(" ".joins(args))
     proc = subprocess.Popen(
-        ["HandBrakeCLI", "-i", disc_ref, "-t", str(title_id), "-o", f"{str(tmpdir)}/title_{title_id}.mkv", "-f", "av_mkv", "--all-audio", "--all-subtitles"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        args,
         text=True,
         bufsize=1,
     )
     state._active_proc = proc
-    start_time = time.time()
-    stop_spinner = threading.Event()
-    progress: dict = {"pct": -1.0}
-
-    def _spinner():
-        from jellyrip.colors import cyan, dim, green, yellow
-        chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-        i = 0
-        while not stop_spinner.wait(0.05):
-            elapsed_f = time.time() - start_time
-            elapsed = int(elapsed_f)
-            total_bytes = sum(f.stat().st_size for f in tmpdir.glob("*.mkv"))
-            total_mb = total_bytes / (1024 * 1024)
-            elapsed_str = _fmt_duration(elapsed)
-            pct = progress["pct"]
-
-            estimated = False
-            if pct < 0 and expected_bytes > 0 and total_bytes > 0:
-                pct = min(total_bytes / expected_bytes * 100, 99.0)
-                estimated = True
-
-            if pct < 0 and total_bytes == 0:
-                bar = _pulse_bar(i)
-                line = (
-                    f"\r  [{bar}] {dim('Analysing disc...')}  {dim(elapsed_str + ' elapsed')}"
-                )
-            elif pct < 0:
-                line = (
-                    f"\r  {cyan(chars[i % len(chars)])}  {dim(elapsed_str + ' elapsed')}"
-                    f"  {dim('—  ' + f'{total_mb:.0f} MB')}"
-                )
-            else:
-                bar = _progress_bar(pct)
-                pct_str = dim(f"~{pct:4.1f}%") if estimated else yellow(f" {pct:4.1f}%")
-                if pct > 0:
-                    eta_secs = int(elapsed_f * (100 - pct) / pct)
-                    eta_str = f"  {green('~' + _fmt_duration(eta_secs) + ' left')}"
-                else:
-                    eta_str = f"  {dim('--:-- left')}"
-                speed_str = f"  {dim(f'{total_mb / elapsed_f:.1f} MB/s')}" if elapsed_f > 0 else ""
-                line = (
-                    f"\r  [{bar}] {pct_str}"
-                    f"  {dim(elapsed_str + ' elapsed')}{eta_str}"
-                    f"  {dim(f'{total_mb:.0f} MB')}{speed_str}"
-                )
-
-            with state._print_lock:
-                print(f"{line}\033[K", end="", flush=True)
-            i += 1
-
-    spinner = threading.Thread(target=_spinner, daemon=True)
-    spinner.start()
-
-    for raw_line in proc.stdout:
-        line = raw_line.rstrip("\n")
-
-        if line.startswith("PRGV:"):
-            parts = line[5:].split(",")
-            if len(parts) >= 3:
-                try:
-                    curr, maxx = int(parts[0]), int(parts[2])
-                    if maxx > 0:
-                        progress["pct"] = min(curr / maxx * 100, 100.0)
-                except ValueError:
-                    pass
-
-        elif line.startswith("MSG:"):
-            pass
-
-    stop_spinner.set()
-    spinner.join(timeout=2)
-    print()
 
     if proc.wait() != 0:
         print(f"\nERROR: Handbrake failed ripping title {title_id}.")
-        print(proc.stdout)
-        print(proc.stderr)
         sys.exit(1)
 
     state._active_proc = None
